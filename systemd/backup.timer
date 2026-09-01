@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diário do ufla-devops-shop
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target
