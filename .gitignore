@@ -41,3 +41,7 @@ kubeconfig
 
 # ATENCAO: o ambiente.txt da Atividade 0 DEVE ser versionado.
 # Nao adicione "*.txt" aqui.
+
+# Dados da Atividade 2 -- 87 MB de access.log. NAO versione.
+# Traga o arquivo com ./scripts/baixar-dados.sh
+dados/
