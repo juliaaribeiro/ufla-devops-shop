@@ -69,6 +69,11 @@ Com `DATABASE_URL` e `REDIS_URL` ela usa PostgreSQL e Redis. Rotas, variáveis,
 modos e os tamanhos reais de imagem estão em
 **[docs/aplicacao.md](docs/aplicacao.md)** — leia antes da Atividade 4.
 
+### Atividade 4 — imagem Docker
+
+Dockerfile, `.dockerignore` e evidências de tamanho, healthcheck e encerramento
+estão descritos em **[docs/atividade-04.md](docs/atividade-04.md)**.
+
 ### Seu fork está desatualizado?
 
 Quem fez o *fork* antes de a aplicação entrar aqui precisa **trazê-la**:
