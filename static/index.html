@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ufla-devops-shop</title>
+  <link rel="stylesheet" href="/static/estilo.css">
+</head>
+<body>
+  <header>
+    <h1>ufla-devops-shop</h1>
+    <p class="sub">Loja didática da disciplina DevOps na Prática · DCC/UFLA</p>
+    <p class="info" id="info">conectando…</p>
+  </header>
+
+  <main>
+    <section class="catalogo">
+      <form id="busca" autocomplete="off">
+        <input id="termo" type="search" placeholder="Buscar produto…" aria-label="Buscar">
+        <button type="submit">Buscar</button>
+        <button type="button" id="limpar">Todos</button>
+      </form>
+      <div id="produtos" class="grade"></div>
+    </section>
+
+    <aside class="carrinho">
+      <h2>Carrinho</h2>
+      <ul id="itens"></ul>
+      <p class="total">Total: <strong id="total">R$ 0,00</strong></p>
+      <button id="finalizar" disabled>Finalizar pedido</button>
+      <p id="mensagem" class="mensagem"></p>
+    </aside>
+  </main>
+
+  <footer>
+    <a href="/docs">documentação da API</a> ·
+    <a href="/health">/health</a> ·
+    <a href="/ready">/ready</a>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

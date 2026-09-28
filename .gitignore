@@ -7,13 +7,19 @@ Thumbs.db
 .idea/
 *.swp
 
-# Python (a aplicacao chega na Semana 5)
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 .pytest_cache/
+.ruff_cache/
 .coverage
+coverage.xml
+
+# Banco SQLite do modo autonomo (dados locais, nunca versionar)
+*.db
+*.db-journal
 
 # Node
 node_modules/

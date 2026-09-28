@@ -1,0 +1,24 @@
+[project]
+name = "ufla-devops-shop"
+version = "1.0.0"
+description = "Loja didática da disciplina DevOps na Prática (DCC/UFLA)"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["dados", ".venv", "scripts"]  # scripts/ sao ferramentas do professor
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+show_missing = true

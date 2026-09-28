@@ -32,20 +32,55 @@ e provisionada, semana após semana.
 
 ```
 ufla-devops-shop/
+├── app/                       # a API (FastAPI): uvicorn app:api
+├── static/                    # o front estático, servido pela API em /
+├── tests/                     # pytest — roda sem banco nem cache
+├── requirements.txt           # dependências de execução (vão para a imagem)
+├── requirements-dev.txt       # + testes, cobertura e lint (CI e desenvolvimento)
+├── pyproject.toml             # configuração de ruff, pytest e cobertura
 ├── docs/
-│   └── instalacao.md          # roteiro de instalação por sistema operacional
+│   ├── instalacao.md          # roteiro de instalação por sistema operacional
+│   └── aplicacao.md           # como a aplicação funciona, rotas e variáveis
 ├── scripts/
-│   └── check-ambiente.sh      # verificador de ambiente (Atividade 0)
-├── alunos/
-│   └── _modelo.md             # modelo do seu arquivo de apresentação
+│   ├── check-ambiente.sh      # verificador de ambiente (Atividade 0)
+│   └── baixar-dados.sh        # traz o access.log da Atividade 2
+├── alunos/                    # apresentação de cada aluno (Atividade 0)
+├── analises/                  # análises da Atividade 1 e (em logs/) da Atividade 2
 └── .github/
     ├── pull_request_template.md
     └── workflows/             # verificação automática de cada atividade
 ```
 
-A **aplicação** (API, banco, cache e front) entra no repositório no início do
-Bloco 2, na Semana 5, junto com a Aula 4 — Containers I. Até lá o repositório
-serve ao fluxo de entrega e à verificação de ambiente.
+## A aplicação
+
+`ufla-devops-shop` é uma loja mínima: API em Python (FastAPI), PostgreSQL,
+Redis e um front estático. Ela é o **fio condutor** das 15 semanas — cada
+atividade acrescenta uma camada sobre a mesma base, e nenhuma começa do zero.
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn app:api --reload        # http://localhost:8000  (API + front + /docs)
+pytest --cov=app                # os testes não precisam de banco nem de cache
+```
+
+Sem variáveis de ambiente ela sobe **sozinha** (SQLite + cache em memória).
+Com `DATABASE_URL` e `REDIS_URL` ela usa PostgreSQL e Redis. Rotas, variáveis,
+modos e os tamanhos reais de imagem estão em
+**[docs/aplicacao.md](docs/aplicacao.md)** — leia antes da Atividade 4.
+
+### Seu fork está desatualizado?
+
+Quem fez o *fork* antes de a aplicação entrar aqui precisa **trazê-la**:
+`git pull` puxa do seu fork, não deste repositório.
+
+```bash
+git remote add upstream https://github.com/rdurelli/ufla-devops-shop.git   # uma vez só
+git fetch upstream && git switch main && git merge upstream/main && git push origin main
+```
+
+Ou **Sync fork → Update branch** na página do seu fork. Faça isso no início de
+**toda** atividade.
 
 ## `scripts/check-ambiente.sh`
 
