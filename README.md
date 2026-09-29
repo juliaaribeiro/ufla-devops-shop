@@ -1,5 +1,7 @@
 # ufla-devops-shop
 
+[![CI](https://github.com/juliaaribeiro/ufla-devops-shop/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/juliaaribeiro/ufla-devops-shop/actions/workflows/ci.yml)
+
 Repositório da turma de **DevOps na Prática** — DCC / UFLA.
 
 Prof. Dr. Rafael Serapilha Durelli · [rafael.durelli@ufla.br](mailto:rafael.durelli@ufla.br)
