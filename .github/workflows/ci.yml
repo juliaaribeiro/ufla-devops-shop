@@ -1,0 +1,197 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Tests and coverage
+        run: pytest --cov=app --cov-report=xml
+
+  release-and-deploy:
+    name: Publish and deploy staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bootstrap SemVer baseline
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if ! git tag --list | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            if [[ ! "$PUSH_BEFORE" =~ ^[0-9a-f]{40}$ ]] || [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then
+              echo "::error::Cannot initialize the 1.0.0 baseline from this push."
+              exit 1
+            fi
+            git tag 1.0.0 "$PUSH_BEFORE"
+            git push origin refs/tags/1.0.0
+          fi
+
+      - name: Derive SemVer from Conventional Commits
+        id: version
+        uses: mathieudutour/github-tag-action@v7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          release_branches: main
+          default_bump: patch
+          tag_prefix: ""
+          dry_run: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify immutable image tags or reuse the published image
+        id: image
+        env:
+          IMAGE_NAME: ghcr.io/juliaaribeiro/ufla-shop
+          VERSION: ${{ steps.version.outputs.new_version }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::No SemVer version was derived from the push."
+            exit 1
+          fi
+          inspect_digest() {
+            docker buildx imagetools inspect "$1" 2>/dev/null \
+              | sed -n 's/^Digest: //p' \
+              | head -n 1
+          }
+          version_digest="$(inspect_digest "$IMAGE_NAME:$VERSION" || true)"
+          commit_digest="$(inspect_digest "$IMAGE_NAME:sha-$COMMIT_SHA" || true)"
+          if [[ -n "$version_digest" && -n "$commit_digest" ]]; then
+            if [[ "$version_digest" != "$commit_digest" ]]; then
+              echo "::error::The SemVer and commit tags refer to different images."
+              exit 1
+            fi
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          elif [[ -z "$version_digest" && -z "$commit_digest" ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Only one immutable GHCR tag exists; refusing a partial overwrite."
+            exit 1
+          fi
+
+      - name: Build once and publish both immutable tags
+        if: steps.image.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/juliaaribeiro/ufla-shop:${{ steps.version.outputs.new_version }}
+            ghcr.io/juliaaribeiro/ufla-shop:sha-${{ github.sha }}
+
+      - name: Prepare temporary Compose staging
+        run: |
+          db_password="$(openssl rand -hex 24)"
+          echo "::add-mask::$db_password"
+          printf 'POSTGRES_DB=loja\nPOSTGRES_PASSWORD=%s\n' "$db_password" \
+            > "$RUNNER_TEMP/staging.env"
+          chmod 600 "$RUNNER_TEMP/staging.env"
+
+      - name: Deploy the published image to temporary staging
+        env:
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" pull api
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" up -d --wait
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" ps
+          curl --fail --retry 10 --retry-connrefused --retry-delay 2 \
+            http://127.0.0.1/health
+          echo "Staging is healthy with ghcr.io/juliaaribeiro/ufla-shop:$IMAGE_TAG"
+
+      - name: Roll back to the previous published version
+        env:
+          PREVIOUS_VERSION: ${{ steps.version.outputs.previous_version }}
+        run: |
+          if [[ ! "$PREVIOUS_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::No previous SemVer image is available for rollback."
+            exit 1
+          fi
+          echo "Rollback demonstration: switching staging to version $PREVIOUS_VERSION"
+          IMAGE_TAG="$PREVIOUS_VERSION" \
+            docker compose --env-file "$RUNNER_TEMP/staging.env" \
+              -p "staging-${GITHUB_RUN_ID}" pull api
+          IMAGE_TAG="$PREVIOUS_VERSION" \
+            docker compose --env-file "$RUNNER_TEMP/staging.env" \
+              -p "staging-${GITHUB_RUN_ID}" up -d --wait
+          IMAGE_TAG="$PREVIOUS_VERSION" \
+            docker compose --env-file "$RUNNER_TEMP/staging.env" \
+              -p "staging-${GITHUB_RUN_ID}" ps
+          curl --fail --retry 10 --retry-connrefused --retry-delay 2 \
+            http://127.0.0.1/health
+          echo "Rollback verified: previous version $PREVIOUS_VERSION is healthy."
+
+      - name: Restore the current commit after rollback verification
+        env:
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" pull api
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" up -d --wait
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" ps
+          curl --fail --retry 10 --retry-connrefused --retry-delay 2 \
+            http://127.0.0.1/health
+          echo "Temporary staging finished healthy on ghcr.io/juliaaribeiro/ufla-shop:$IMAGE_TAG"
+
+      - name: Create GitHub Release with generated notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.new_version }}
+        run: |
+          gh release create "$VERSION" \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --generate-notes || gh release view "$VERSION" >/dev/null
+
+      - name: Remove temporary staging
+        if: always()
+        run: |
+          docker compose --env-file "$RUNNER_TEMP/staging.env" \
+            -p "staging-${GITHUB_RUN_ID}" down -v --remove-orphans || true

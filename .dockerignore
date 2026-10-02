@@ -1,0 +1,14 @@
+.git
+.venv
+cache
+.env
+__pycache__
+*.py[cod]
+*.db
+tests
+docs
+scripts
+dados
+alunos
+analises
+static/.DS_Store

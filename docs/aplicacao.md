@@ -148,6 +148,73 @@ biblioteca do sistema.
 | 13     | métricas RED, painel, alerta; incidente simulado com `/api/erro`         |
 | 14     | tudo isso descrito em Terraform                                          |
 
+## Aula 7 — CI/CD até staging
+
+O workflow `.github/workflows/ci.yml` roda `ruff check .`, os testes nas versões
+Python 3.11 e 3.12 e a cobertura com mínimo de 80%. Pull requests executam esse
+gate; um `push` em `main` só publica e implanta depois que as duas versões passam.
+Conventional Commits definem a versão SemVer (`feat` = minor, `fix` = patch,
+`!`/`BREAKING CHANGE` = major; outros commits usam patch como fallback).
+
+A imagem `ghcr.io/juliaaribeiro/ufla-shop` é construída uma única vez e publicada
+com as tags SemVer e `sha-<commit>`. Tags existentes nunca são sobrescritas pelo
+workflow. O staging usa Docker Compose no próprio runner hospedado pelo GitHub:
+ele recebe a tag SHA da mesma construção e `docker compose up -d --wait` aguarda
+os healthchecks da API e do Nginx. O workflow então implanta a versão SemVer
+anterior, confirma sua saúde como demonstração de rollback e volta à versão atual.
+Ao fim do job, os containers e o banco temporário são removidos; esse staging
+não permanece acessível entre execuções. O pacote GHCR precisa permitir acesso
+ao workflow; mantê-lo público também permite pull anônimo.
+
+### Configuração
+
+Não é preciso criar uma VM nem cadastrar secrets SSH. O runner cria uma senha
+temporária para o banco e remove a stack no final. O `GITHUB_TOKEN` para publicar
+no GHCR e criar o Release é fornecido pelo Actions; permita que o workflow tenha
+as permissões `contents: write` e `packages: write`. Confira que o pacote
+`ufla-shop` permite publicação pelo GitHub Actions.
+
+Cada `git push origin main` que passe o gate publica a imagem, testa staging,
+registra no log o rollback para a versão SemVer anterior, volta à versão atual
+e cria o Release com notas geradas pelo GitHub. Para executar localmente o mesmo
+gate antes do push:
+
+```bash
+ruff check .
+pytest --cov=app --cov-report=term
+```
+
+Com Docker Compose v2 e `.env` configurado, valide também a stack e seus
+healthchecks localmente:
+
+```bash
+docker compose config -q
+docker compose up -d --wait
+docker compose ps
+docker compose down
+```
+
+### Rollback de staging
+
+O workflow demonstra rollback automaticamente em cada execução: depois de
+validar a versão atual, seleciona a versão SemVer anterior, faz pull da imagem
+existente, sobe a stack e verifica o healthcheck. Em seguida volta à imagem SHA
+do commit atual para que o estado final do teste seja a versão recém-publicada.
+Os passos e a confirmação de saúde ficam registrados no log do GitHub Actions.
+
+Para fazer rollback manual em um ambiente Compose local persistente, use a tag
+SHA de um deploy anterior (ou a tag SemVer correspondente):
+
+```bash
+bash scripts/rollback-staging.sh sha-<commit-completo>
+# alternativa: bash scripts/rollback-staging.sh 1.2.3
+```
+
+O script valida a tag, faz pull do artefato GHCR já publicado e atualiza a stack
+com `docker compose up -d --wait`; não reconstrói a imagem. O staging do runner é
+temporário e some ao final do job, mas as tags do GHCR e os logs da demonstração
+de rollback permanecem disponíveis.
+
 ## Fork desatualizado?
 
 Você fez o *fork* antes de a aplicação existir. `git pull` puxa **do seu fork**,

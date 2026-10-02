@@ -1,5 +1,7 @@
 # ufla-devops-shop
 
+[![CI](https://github.com/juliaaribeiro/ufla-devops-shop/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/juliaaribeiro/ufla-devops-shop/actions/workflows/ci.yml)
+
 Repositório da turma de **DevOps na Prática** — DCC / UFLA.
 
 Prof. Dr. Rafael Serapilha Durelli · [rafael.durelli@ufla.br](mailto:rafael.durelli@ufla.br)
@@ -68,6 +70,11 @@ Sem variáveis de ambiente ela sobe **sozinha** (SQLite + cache em memória).
 Com `DATABASE_URL` e `REDIS_URL` ela usa PostgreSQL e Redis. Rotas, variáveis,
 modos e os tamanhos reais de imagem estão em
 **[docs/aplicacao.md](docs/aplicacao.md)** — leia antes da Atividade 4.
+
+### Atividade 4 — imagem Docker
+
+Dockerfile, `.dockerignore` e evidências de tamanho, healthcheck e encerramento
+estão descritos em **[docs/atividade-04.md](docs/atividade-04.md)**.
 
 ### Seu fork está desatualizado?
 
