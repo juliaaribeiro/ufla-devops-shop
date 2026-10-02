@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: ghcr.io/juliaaribeiro/ufla-shop:1.0.0
+    image: ghcr.io/juliaaribeiro/ufla-shop:${IMAGE_TAG:-1.0.0}
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?defina no .env}@banco:5432/${POSTGRES_DB:?defina no .env}
       REDIS_URL: redis://cache:6379/0
@@ -34,6 +34,12 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
     restart: unless-stopped
 
   nginx:
