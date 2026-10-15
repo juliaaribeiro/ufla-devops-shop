@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufla-shop-falha-imagem
+  labels:
+    app: ufla-shop-falha-imagem
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ufla-shop-falha-imagem
+  template:
+    metadata:
+      labels:
+        app: ufla-shop-falha-imagem
+    spec:
+      containers:
+        - name: ufla-shop
+          image: ghcr.io/juliaaribeiro/ufla-shop:tag-inexistente
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
