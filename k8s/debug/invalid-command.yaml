@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufla-shop-falha-comando
+  labels:
+    app: ufla-shop-falha-comando
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ufla-shop-falha-comando
+  template:
+    metadata:
+      labels:
+        app: ufla-shop-falha-comando
+    spec:
+      containers:
+        - name: ufla-shop
+          image: ghcr.io/juliaaribeiro/ufla-shop:1.0.0
+          command: ["/bin/sh", "-c", "sleep not-a-number"]
+          ports:
+            - containerPort: 8000
