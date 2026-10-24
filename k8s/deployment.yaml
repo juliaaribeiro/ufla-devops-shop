@@ -5,7 +5,7 @@ metadata:
   labels:
     app: ufla-shop
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: ufla-shop
@@ -26,22 +26,66 @@ spec:
           ports:
             - name: http
               containerPort: 8000
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: ufla-shop-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ufla-shop-config
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ufla-shop-config
+                  key: POSTGRES_PORT
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ufla-shop-config
+                  key: REDIS_URL
+            - name: CACHE_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: ufla-shop-config
+                  key: CACHE_TTL
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
-            initialDelaySeconds: 10
+              port: http
             periodSeconds: 10
-            timeoutSeconds: 3
+            timeoutSeconds: 2
             failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /ready
-              port: 8000
-            initialDelaySeconds: 5
+              port: http
             periodSeconds: 5
-            timeoutSeconds: 3
+            timeoutSeconds: 2
             failureThreshold: 3
+            successThreshold: 1
           resources:
             requests:
               cpu: 100m

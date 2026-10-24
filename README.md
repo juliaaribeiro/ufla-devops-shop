@@ -46,6 +46,7 @@ ufla-devops-shop/
 ├── scripts/
 │   ├── check-ambiente.sh      # verificador de ambiente (Atividade 0)
 │   └── baixar-dados.sh        # traz o access.log da Atividade 2
+├── k8s/                       # manifests e roteiro Kubernetes (Atividades 9 e 10)
 ├── alunos/                    # apresentação de cada aluno (Atividade 0)
 ├── analises/                  # análises da Atividade 1 e (em logs/) da Atividade 2
 └── .github/
@@ -75,6 +76,12 @@ modos e os tamanhos reais de imagem estão em
 
 Dockerfile, `.dockerignore` e evidências de tamanho, healthcheck e encerramento
 estão descritos em **[docs/atividade-04.md](docs/atividade-04.md)**.
+
+### Atividade 10 — Kubernetes
+
+O roteiro de instalação, operação, validação de persistência, Ingress e HPA está
+em **[docs/atividade-10.md](docs/atividade-10.md)**. Ele usa os manifests existentes em `k8s/`
+e documenta a geração local das credenciais, sem versionar senhas.
 
 ### Seu fork está desatualizado?
 

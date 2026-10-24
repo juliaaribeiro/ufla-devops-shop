@@ -17,7 +17,7 @@ cleanup() {
   if kind get clusters | grep -Fxq "$CLUSTER_NAME"; then
     kubectl config use-context "kind-${CLUSTER_NAME}" >/dev/null 2>&1
     kubectl get nodes -o wide > "$EVIDENCE_DIR/nodes-final.txt" 2>&1
-    kubectl get pods,deployments,services -A -o wide \
+    kubectl get pods,deployments,statefulsets,services,persistentvolumeclaims -A -o wide \
       > "$EVIDENCE_DIR/resources-final.txt" 2>&1
     kind export logs --name "$CLUSTER_NAME" "$EVIDENCE_DIR/kind-logs" \
       > "$EVIDENCE_DIR/kind-export-logs.txt" 2>&1
@@ -46,10 +46,18 @@ if [[ "$node_count" != 3 ]]; then
   exit 1
 fi
 
+kubectl apply -f k8s/app-config.yaml
+kubectl create secret generic postgres-credentials \
+  --from-literal=POSTGRES_USER=loja \
+  --from-literal=POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+kubectl apply -f k8s/postgres.yaml
+kubectl apply -f k8s/cache.yaml
+kubectl wait --for=condition=Ready pod/postgres-0 --timeout=180s
+kubectl wait --for=condition=available deployment/cache --timeout=180s
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl wait --for=condition=available deployment/ufla-shop --timeout=180s
-kubectl get deployment,service,pods -o wide \
+kubectl get deployment,statefulset,service,persistentvolumeclaim,pods -o wide \
   | tee "$EVIDENCE_DIR/initial-deployment.txt"
 kubectl get endpoints ufla-shop \
   | tee "$EVIDENCE_DIR/service-endpoints.txt"
@@ -98,7 +106,7 @@ printf 'Replica deleted: %s\nReplacement Pod: %s\nTime to Ready: %s ms\n' \
 kubectl get events --sort-by=.metadata.creationTimestamp \
   | tee "$EVIDENCE_DIR/reconciliation-events.txt"
 
-printf '\n=== Scale from 3 to 6 replicas ===\n'
+printf '\n=== Scale from 2 to 6 replicas ===\n'
 kubectl scale deployment/ufla-shop --replicas=6
 kubectl wait --for=jsonpath='{.status.readyReplicas}'=6 \
   deployment/ufla-shop --timeout=180s
