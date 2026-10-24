@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufla-shop-falha-selector
+  labels:
+    app: ufla-shop-falha-selector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ufla-shop-seletor-errado
+  template:
+    metadata:
+      labels:
+        app: ufla-shop-falha-selector
+    spec:
+      containers:
+        - name: ufla-shop
+          image: ghcr.io/juliaaribeiro/ufla-shop:1.0.0
+          ports:
+            - containerPort: 8000
