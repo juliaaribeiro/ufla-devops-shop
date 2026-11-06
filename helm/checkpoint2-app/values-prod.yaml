@@ -1,9 +1,7 @@
 replicaCount: 2
 
-appMessage: "Hello World"
-
 sealedSecret:
-  encryptedApiToken: ""
+  encryptedDatabaseUrl: ""
 
 resources:
   requests:

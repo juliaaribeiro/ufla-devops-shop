@@ -6,8 +6,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/juliaaribeiro/devops.git
-    targetRevision: checkpoint-02
+    repoURL: https://github.com/juliaaribeiro/ufla-devops-shop.git
+    targetRevision: atividade-11
     path: helm/checkpoint2-app
     helm:
       valueFiles:

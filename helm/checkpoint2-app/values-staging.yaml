@@ -1,9 +1,7 @@
 replicaCount: 1
 
-appMessage: "Hello World - Staging"
-
 sealedSecret:
-  encryptedApiToken: ""
+  encryptedDatabaseUrl: ""
 
 resources:
   requests:

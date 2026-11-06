@@ -1,21 +1,23 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/juliaaribeiro/docker-pratico
-  tag: "1.0"
+  repository: ghcr.io/juliaaribeiro/ufla-shop
+  tag: "1.0.0"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
 
-appMessage: "Hello World"
-
 service:
   type: ClusterIP
   port: 80
-  targetPort: 8080
+  targetPort: http
+
+cache:
+  url: redis://cache:6379/0
+  ttl: 30
 
 sealedSecret:
-  encryptedApiToken: ""
+  encryptedDatabaseUrl: ""
 
 resources:
   requests:

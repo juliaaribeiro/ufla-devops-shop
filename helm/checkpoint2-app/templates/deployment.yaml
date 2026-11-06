@@ -26,19 +26,21 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 8000
               protocol: TCP
           env:
-            - name: APP_MESSAGE
-              value: {{ .Values.appMessage | quote }}
-            - name: API_TOKEN
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: checkpoint2-app-secret
-                  key: API_TOKEN
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              value: {{ .Values.cache.url | quote }}
+            - name: CACHE_TTL
+              value: {{ .Values.cache.ttl | quote }}
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: http
           livenessProbe:
             httpGet:
