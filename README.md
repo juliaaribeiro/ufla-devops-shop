@@ -1,180 +1,200 @@
-# ufla-devops-shop
+# Checkpoint 2 — GitOps com Helm e ArgoCD
 
-[![CI](https://github.com/juliaaribeiro/ufla-devops-shop/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/juliaaribeiro/ufla-devops-shop/actions/workflows/ci.yml)
+## Objetivo
 
-Repositório da turma de **DevOps na Prática** — DCC / UFLA.
-
-Prof. Dr. Rafael Serapilha Durelli · [rafael.durelli@ufla.br](mailto:rafael.durelli@ufla.br)
-
-Este repositório é o **projeto fio condutor** da disciplina. Você faz um *fork*
-dele na Atividade 0 e trabalha no seu fork durante as 15 semanas: a mesma
-aplicação vai sendo containerizada, testada, empacotada, implantada, monitorada
-e provisionada, semana após semana.
-
----
-
-## Comece por aqui
-
-1. Instale as ferramentas: **[docs/instalacao.md](docs/instalacao.md)**
-   (Ubuntu/Debian, Fedora, macOS e Windows com WSL2).
-2. Faça o *fork* deste repositório (botão **Fork**, canto superior direito).
-3. Clone o **seu** fork e verifique a máquina:
-
-   ```bash
-   git clone git@github.com:<seu-usuario>/ufla-devops-shop.git
-   cd ufla-devops-shop
-   ./scripts/check-ambiente.sh
-   ```
-
-4. Siga o enunciado da **Atividade 0**, publicado no campus virtual.
-
----
+Empacotar e implantar a aplicação FastAPI por GitOps. O Git contém o estado
+desejado; o Argo CD busca esse estado e reconcilia continuamente o cluster.
+Alterações são feitas por commit. O rollback é feito com `git revert`, não com
+rollback manual do Helm.
 
 ## Estrutura
 
-```
-ufla-devops-shop/
-├── app/                       # a API (FastAPI): uvicorn app:api
-├── static/                    # o front estático, servido pela API em /
-├── tests/                     # pytest — roda sem banco nem cache
-├── requirements.txt           # dependências de execução (vão para a imagem)
-├── requirements-dev.txt       # + testes, cobertura e lint (CI e desenvolvimento)
-├── pyproject.toml             # configuração de ruff, pytest e cobertura
-├── docs/
-│   ├── instalacao.md          # roteiro de instalação por sistema operacional
-│   └── aplicacao.md           # como a aplicação funciona, rotas e variáveis
-├── scripts/
-│   ├── check-ambiente.sh      # verificador de ambiente (Atividade 0)
-│   └── baixar-dados.sh        # traz o access.log da Atividade 2
-├── k8s/                       # manifests e roteiro Kubernetes (Atividades 9 e 10)
-├── alunos/                    # apresentação de cada aluno (Atividade 0)
-├── analises/                  # análises da Atividade 1 e (em logs/) da Atividade 2
-└── .github/
-    ├── pull_request_template.md
-    └── workflows/             # verificação automática de cada atividade
-```
+- `helm/checkpoint2-app/Chart.yaml`: metadados do chart.
+- `helm/checkpoint2-app/values.yaml`: valores padrão.
+- `helm/checkpoint2-app/values-staging.yaml`: parâmetros de staging.
+- `helm/checkpoint2-app/values-prod.yaml`: parâmetros de produção.
+- `helm/checkpoint2-app/templates/`: Deployment, Service e SealedSecret.
+- `argocd/`: Applications dos dois ambientes.
 
-## A aplicação
+O chart é o pacote, os values são parâmetros e os templates são moldes. Cada
+Application cria uma release Helm gerenciada pelo Argo CD. Não há manifests
+soltos de Deployment ou Service por ambiente.
 
-`ufla-devops-shop` é uma loja mínima: API em Python (FastAPI), PostgreSQL,
-Redis e um front estático. Ela é o **fio condutor** das 15 semanas — cada
-atividade acrescenta uma camada sobre a mesma base, e nenhuma começa do zero.
+## Diferenças entre staging e produção
 
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-uvicorn app:api --reload        # http://localhost:8000  (API + front + /docs)
-pytest --cov=app                # os testes não precisam de banco nem de cache
-```
+Staging usa uma réplica e limites menores para validar alterações com menor
+consumo de recursos. Produção usa duas réplicas para manter mais capacidade
+disponível e limites maiores. A configuração de conexão ao PostgreSQL é
+específica por ambiente porque cada namespace recebe seu próprio ciphertext
+selado.
 
-Sem variáveis de ambiente ela sobe **sozinha** (SQLite + cache em memória).
-Com `DATABASE_URL` e `REDIS_URL` ela usa PostgreSQL e Redis. Rotas, variáveis,
-modos e os tamanhos reais de imagem estão em
-**[docs/aplicacao.md](docs/aplicacao.md)** — leia antes da Atividade 4.
+Esses valores são pontos de partida para a atividade; devem ser ajustados se
+houver requisitos de capacidade ou quotas do cluster.
 
-### Atividade 4 — imagem Docker
+## GitOps e Argo CD
 
-Dockerfile, `.dockerignore` e evidências de tamanho, healthcheck e encerramento
-estão descritos em **[docs/atividade-04.md](docs/atividade-04.md)**.
+As Applications apontam para a branch `atividade-11` e para o chart
+`helm/checkpoint2-app`. Cada uma seleciona o values file do seu ambiente.
+`automated` habilita sincronização automática, `prune: true` remove recursos
+retirados do Git e `selfHeal: true` corrige alterações feitas diretamente no
+cluster.
 
-### Atividade 10 — Kubernetes
+O modelo é pull: o agente do Argo CD dentro do cluster busca o estado
+declarativo no Git e reconcilia o cluster. Drift é a diferença entre o estado
+real do cluster e o estado versionado.
 
-O roteiro de instalação, operação, validação de persistência, Ingress e HPA está
-em **[docs/atividade-10.md](docs/atividade-10.md)**. Ele usa os manifests existentes em `k8s/`
-e documenta a geração local das credenciais, sem versionar senhas.
+## Segredo com Sealed Secrets
 
-### Seu fork está desatualizado?
+Nunca grave um Secret em texto claro no Git. Base64 não é criptografia. O
+chart recebe apenas o ciphertext de `DATABASE_URL` produzido por `kubeseal`;
+a chave privada de descriptografia permanece no cluster.
 
-Quem fez o *fork* antes de a aplicação entrar aqui precisa **trazê-la**:
-`git pull` puxa do seu fork, não deste repositório.
+**A implantação ainda não está pronta para sincronizar:** os dois values files
+contêm `sealedSecret.encryptedDatabaseUrl` vazio. Não foi fornecida a URL de
+banco de dados nem confirmado um controller/certificado Sealed Secrets. Não
+substitua o campo por um texto arbitrário. O template falha intencionalmente
+na renderização enquanto o ciphertext estiver ausente.
+
+Verifique se o CRD e o controller estão instalados:
 
 ```bash
-git remote add upstream https://github.com/rdurelli/ufla-devops-shop.git   # uma vez só
-git fetch upstream && git switch main && git merge upstream/main && git push origin main
+kubectl get crd sealedsecrets.bitnami.com
+kubectl get pods -A | grep sealed-secrets
 ```
 
-Ou **Sync fork → Update branch** na página do seu fork. Faça isso no início de
-**toda** atividade.
+Se o controller não estiver instalado, pare e combine a instalação com quem
+administra o cluster. Não instale componentes no cluster de produção sem
+autorização.
 
-## `scripts/check-ambiente.sh`
-
-Verifica ferramentas, versões mínimas, o daemon do Docker, a configuração do Git
-e os recursos da máquina. Quando algo falta, imprime o comando de instalação
-para o sistema detectado.
+Com o controller disponível e `kubeseal` configurado para acessá-lo, gere um
+ciphertext da URL de conexão para cada namespace. O valor será lido sem eco e
+enviado pelo pipe; não o escreva em arquivo nem o inclua em comandos salvos no
+histórico:
 
 ```bash
-./scripts/check-ambiente.sh                      # relatório colorido
-./scripts/check-ambiente.sh | tee ambiente.txt   # salva para anexar ao PR
+read -rsp "DATABASE_URL de staging: " DATABASE_URL
+printf '\n'
+printf '%s' "$DATABASE_URL" | kubeseal --raw --from-file=/dev/stdin \
+  --namespace devops-staging \
+  --name checkpoint2-app-secret \
+  --scope namespace-wide
+unset DATABASE_URL
 ```
 
-Sai com código `0` se o ambiente estiver pronto e `1` se faltar algo
-obrigatório. Versões mínimas: `git` 2.30, `docker` 24.0, `kubectl` 1.28,
-`kind` 0.20, `helm` 3.12, `terraform` 1.5, Docker Compose v2.
+Repita para produção, trocando o namespace para `devops-prod`. Copie cada
+saída ciphertext para `sealedSecret.encryptedDatabaseUrl` no values file
+correspondente. O escopo `namespace-wide` ainda vincula o ciphertext ao
+namespace. A aplicação usa essa variável para conectar ao PostgreSQL. Não
+copie nem versione um Secret Kubernetes em texto claro.
 
-O script também é material didático: na Semana 4 (shell script) abrimos este
-arquivo em aula e discutimos as construções usadas nele.
+O chart gerencia a API e espera que os serviços PostgreSQL (`postgres:5432`)
+e Redis (`cache:6379`) estejam acessíveis em cada namespace. A URL do
+PostgreSQL é fornecida pelo ciphertext; a URL do Redis pode ser ajustada em
+`cache.url`. Não sincronize as Applications antes de provisionar essas
+dependências e preencher o ciphertext de cada ambiente.
 
----
+## Validar o chart
 
-## Como entregar
-
-Toda atividade tem **duas etapas obrigatórias**. Faltando qualquer uma delas, a
-atividade é considerada não entregue.
-
-1. **Pull Request neste repositório**, com o trabalho feito na *branch*
-   `atividade-NN` do seu fork.
-2. **Link do Pull Request postado no campus virtual**, na tarefa correspondente.
-   O horário desta postagem é o registro oficial da entrega.
-
-O fluxo é sempre o mesmo:
+Depois de preencher os ciphertexts:
 
 ```bash
-git switch -c atividade-00                       # branch da atividade
-git add alunos/<seu-usuario>.md ambiente.txt     # seus arquivos
-git commit -m "feat: apresentacao e ambiente de <seu-usuario>"
-git push -u origin atividade-00
+helm lint helm/checkpoint2-app
+helm template checkpoint2-staging helm/checkpoint2-app \
+  --namespace devops-staging \
+  --values helm/checkpoint2-app/values-staging.yaml
+helm template checkpoint2-prod helm/checkpoint2-app \
+  --namespace devops-prod \
+  --values helm/checkpoint2-app/values-prod.yaml
 ```
 
-Depois abra o Pull Request pelo GitHub, com o título no padrão
-`Atividade 0 -- Seu Nome`.
+O Argo CD usa Helm para renderizar o chart e é o responsável por aplicar os
+recursos nos ambientes.
 
-### Verificação automática
+Não execute `helm upgrade` nos namespaces gerenciados pelo Argo CD: isso
+contornaria o Git como fonte da verdade. Se a disciplina exigir demonstrar
+`helm upgrade --atomic --wait`, faça isso somente em um cluster descartável,
+isolado dos ambientes GitOps. O rollback dos ambientes GitOps é sempre feito
+com `git revert`.
 
-Assim que o PR é aberto, o GitHub Actions roda sozinho e comenta o resultado em
-cerca de um minuto. Se aparecer ✗ vermelho, leia o comentário, corrija, faça um
-novo commit e dê `push` na mesma branch — o PR se atualiza sozinho. Você pode
-repetir isso quantas vezes quiser antes do prazo.
+## Publicação e Applications
 
-A verificação automática **não é a nota**. Ela cobre o que a máquina consegue
-julgar; a avaliação do professor complementa nos aspectos que ela não julga —
-clareza, justificativa das decisões e qualidade da documentação.
+Antes de publicar, confirme que a imagem referenciada existe e é acessível ao
+cluster. O workflow do repositório publica
+`ghcr.io/juliaaribeiro/ufla-shop` com tags SemVer e `sha-<commit>`; o chart
+usa inicialmente a tag `1.0.0`. Se o pacote for privado, configure acesso de
+pull no cluster sem versionar credenciais em texto claro.
 
-### Atrasos e descarte
+As Applications devem ser aplicadas somente depois que a branch
+`atividade-11` estiver publicada e os ciphertexts estiverem preenchidos:
 
-Atraso: desconto de 1,0 ponto por dia corrido, contado pelo horário da postagem
-no campus virtual. Descarte: a menor nota entre as atividades do semestre é
-descartada no cálculo final, sem necessidade de justificativa.
+```bash
+kubectl apply -f argocd/checkpoint2-staging.yaml
+kubectl apply -f argocd/checkpoint2-prod.yaml
+argocd app wait checkpoint2-staging --sync --health --timeout 300
+argocd app wait checkpoint2-prod --sync --health --timeout 300
+```
 
----
+## Evidências
 
-## Onde pedir ajuda
+- Sincronização: `argocd app get checkpoint2-staging` e
+  `argocd app get checkpoint2-prod`.
+- Applications: `argocd app list`.
+- `prune` e `selfHeal`: inspecione `spec.syncPolicy.automated` nos dois
+  recursos Application.
+- Sealed Secrets: verifique a presença de `SealedSecret` no Git e no cluster.
+  Não use `kubectl get secret -o yaml`, pois isso pode exibir dados do Secret.
+- Self-heal e rollback: registre o estado antes e depois conforme o roteiro
+  do checkpoint, mantendo os comandos e saídas como evidência.
 
-No **fórum da atividade**, no campus virtual. Pergunta pública gera resposta que
-serve para a turma toda — e quase sempre alguém já passou pelo mesmo problema.
+## Prova de self-heal
 
-Ao relatar um erro, inclua:
+**Aviso:** este comando altera manualmente o Deployment de staging no cluster.
+Execute apenas com autorização, no contexto correto, e capture a evidência
+imediatamente: o Argo CD pode corrigir o drift em poucos segundos.
 
-1. o que você estava tentando fazer;
-2. o comando exato que executou;
-3. a mensagem de erro **completa**, copiada como texto (não como foto da tela);
-4. o que você já tentou.
+```bash
+kubectl scale deployment/checkpoint2-staging-checkpoint2-app \
+  -n devops-staging --replicas=3
+argocd app get checkpoint2-staging
+argocd app diff checkpoint2-staging
+kubectl get deployment checkpoint2-staging-checkpoint2-app \
+  -n devops-staging -o jsonpath='{.spec.replicas}{"\n"}'
+```
 
-Esta é a mesma estrutura de um bom *issue* e de um bom *postmortem*.
+Registre a diferença entre o valor manual (`3`) e o desejado no Git (`1`), e
+depois o retorno para `1`. Também registre a Application como `Synced` após a
+reconciliação:
 
----
+```bash
+argocd app wait checkpoint2-staging --sync --health --timeout 300
+argocd app get checkpoint2-staging
+```
 
-## Uso de IA generativa
+## Rollback via `git revert`
 
-Permitido e incentivado. Em contrapartida, você deve ser capaz de explicar
-qualquer linha entregue: a arguição final pergunta o *porquê* das decisões, não
-a sintaxe.
+**Aviso:** ambas as Applications acompanham `atividade-11`. Alterações no
+chart comum podem afetar os dois ambientes; mudanças somente em
+`values-prod.yaml` afetam produção. Combine qualquer alteração de produção com
+a equipe antes de fazê-la.
+
+Altere, por exemplo, `replicaCount` de `2` para `3` em `values-prod.yaml`;
+depois:
+
+```bash
+git add helm/checkpoint2-app/values-prod.yaml
+git commit -m "Increase production replicas"
+git push
+argocd app wait checkpoint2-prod --sync --health --timeout 300
+```
+
+Registre o estado após a sincronização. Reverta o commit e publique a
+reversão:
+
+```bash
+git revert <hash-do-commit-de-alteracao>
+git push
+argocd app wait checkpoint2-prod --sync --health --timeout 300
+argocd app get checkpoint2-prod
+```
+
+Registre o retorno ao valor anterior definido no Git.

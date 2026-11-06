@@ -1,0 +1,31 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/juliaaribeiro/ufla-shop
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+
+cache:
+  url: redis://cache:6379/0
+  ttl: 30
+
+sealedSecret:
+  encryptedDatabaseUrl: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+nameOverride: ""
+fullnameOverride: ""

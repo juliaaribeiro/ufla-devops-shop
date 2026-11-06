@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: checkpoint2-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/juliaaribeiro/ufla-devops-shop.git
+    targetRevision: atividade-11
+    path: helm/checkpoint2-app
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devops-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
