@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: checkpoint2-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/juliaaribeiro/devops.git
+    targetRevision: checkpoint-02
+    path: helm/checkpoint2-app
+    helm:
+      valueFiles:
+        - values-staging.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devops-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
