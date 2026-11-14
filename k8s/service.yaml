@@ -2,6 +2,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ufla-shop
+  labels:
+    observability: ufla-shop
 spec:
   type: ClusterIP
   selector:

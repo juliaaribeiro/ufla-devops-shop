@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ufla-shop-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ufla-devops-shop
+spec:
+  groups:
+    - name: ufla-shop.http
+      rules:
+        - alert: TaxaDeErroAlta
+          expr: |
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m])) > 0.02
+          for: 10m
+          labels:
+            severity: page
+          annotations:
+            summary: "Taxa de respostas HTTP 5xx acima de 2%"
+            description: "A proporção de respostas 5xx ficou acima de 2% por 10 minutos."
+            runbook_url: "https://github.com/juliaaribeiro/ufla-devops-shop/blob/atividade-12/docs/runbook-5xx.md"

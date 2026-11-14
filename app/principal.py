@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 from app import config
 from app.banco import Banco, BancoIndisponivel, EstoqueInsuficiente
 from app.cache import Cache, CacheIndisponivel
+from app.observabilidade import PrometheusMiddleware, app_metricas
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("loja")
@@ -70,6 +71,7 @@ api = FastAPI(
     description="Loja didática da disciplina DevOps na Prática (DCC/UFLA).",
     lifespan=ciclo_de_vida,
 )
+api.add_middleware(PrometheusMiddleware)
 
 
 # ------------------------------------------------------------------ modelos
@@ -257,3 +259,4 @@ def pagina_inicial() -> FileResponse:
 
 
 api.mount("/static", StaticFiles(directory=ESTATICO), name="static")
+api.mount("/metrics", app_metricas, name="metrics")

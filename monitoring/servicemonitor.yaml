@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ufla-shop-default
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ufla-devops-shop
+spec:
+  selector:
+    matchLabels:
+      observability: ufla-shop
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

@@ -4,6 +4,7 @@ metadata:
   name: {{ include "checkpoint2-app.fullname" . }}
   labels:
     {{- include "checkpoint2-app.labels" . | nindent 4 }}
+    observability: ufla-shop
 spec:
   type: {{ .Values.service.type }}
   selector:

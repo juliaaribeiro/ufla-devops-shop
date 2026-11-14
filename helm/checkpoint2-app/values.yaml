@@ -12,6 +12,12 @@ service:
   port: 80
   targetPort: http
 
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
 cache:
   url: redis://cache:6379/0
   ttl: 30
